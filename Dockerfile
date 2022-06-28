@@ -1,5 +1,8 @@
 FROM ubuntu:focal AS base
 
+ENV TZ=Asia/Bangkok
+ENV DEBIAN_FRONTEND=noninteractivedocker-compose
+
 # ensure local python is preferred over distribution python
 ENV PATH /usr/local/bin:$PATH
 
@@ -14,20 +17,31 @@ RUN set -eux; \
 		libbluetooth-dev \
 		tk-dev \
 		uuid-dev \
-	; \
-	rm -rf /var/lib/apt/lists/*
+		wget curl \
+		gpg \
+		gpg-agent \
+		# c++ cli build tools
+		make gcc g++ \
+		dirmngr \
+		ca-certificates openssl \
+		# for python ssl verify
+		libssl-dev libncurses5-dev libsqlite3-dev libreadline-dev libtk8.6 libgdm-dev libpcap-dev \
+		# libdb4o-cil-dev 
+	;
 
-ENV GPG_KEY E3FF2839C048B25C084DEBE9B26995E310250568
+# ENV GPG_KEY A035C8C19219BA821ECEA86B64E628F8D684696D
 ENV PYTHON_VERSION 3.9.13
 
 RUN set -eux; \
 	\
-	wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz"; \
-	wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc"; \
+	wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" \
+		--no-check-certificate; \
+	wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
+		--no-check-certificate; \
 	GNUPGHOME="$(mktemp -d)"; export GNUPGHOME; \
-	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$GPG_KEY"; \
-	gpg --batch --verify python.tar.xz.asc python.tar.xz; \
-	command -v gpgconf > /dev/null && gpgconf --kill all || :; \
+	# gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$GPG_KEY"; \
+	# gpg --batch --verify python.tar.xz.asc python.tar.xz; \
+	# command -v gpgconf > /dev/null && gpgconf --kill all || :; \
 	rm -rf "$GNUPGHOME" python.tar.xz.asc; \
 	mkdir -p /usr/src/python; \
 	tar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz; \
@@ -80,15 +94,17 @@ RUN set -eux; \
 
 # if this is called "PIP_VERSION", pip explodes with "ValueError: invalid truth value '<VERSION>'"
 ENV PYTHON_PIP_VERSION 22.0.4
+
 # https://github.com/docker-library/python/issues/365
 ENV PYTHON_SETUPTOOLS_VERSION 58.1.0
+
 # https://github.com/pypa/get-pip
 ENV PYTHON_GET_PIP_URL https://github.com/pypa/get-pip/raw/6ce3639da143c5d79b44f94b04080abf2531fd6e/public/get-pip.py
 ENV PYTHON_GET_PIP_SHA256 ba3ab8267d91fd41c58dbce08f76db99f747f716d85ce1865813842bb035524d
 
 RUN set -eux; \
 	\
-	wget -O get-pip.py "$PYTHON_GET_PIP_URL"; \
+	wget -O get-pip.py "$PYTHON_GET_PIP_URL" --no-check-certificate; \
 	echo "$PYTHON_GET_PIP_SHA256 *get-pip.py" | sha256sum -c -; \
 	\
 	export PYTHONDONTWRITEBYTECODE=1; \
@@ -96,7 +112,9 @@ RUN set -eux; \
 	python get-pip.py \
 		--disable-pip-version-check \
 		--no-cache-dir \
-		--no-compile \
+		--no-compile  \
+		--trusted-host pypi.org \ 
+		--trusted-host files.pythonhosted.org \
 		"pip==$PYTHON_PIP_VERSION" \
 		"setuptools==$PYTHON_SETUPTOOLS_VERSION" \
 	; \
@@ -120,8 +138,7 @@ RUN set -ex; \
 # Ubuntu includes "gnupg" (not "gnupg2", but still 2.x), but not dirmngr, and gnupg 2.x requires dirmngr
 # so, if we're not running gnupg 1.x, explicitly install dirmngr too
 		apt-get install -y --no-install-recommends dirmngr; \
-	fi; \
-	rm -rf /var/lib/apt/lists/*
+	fi;
 
 # add gosu for easy step-down from root
 # https://github.com/tianon/gosu/releases
@@ -133,8 +150,8 @@ RUN set -eux; \
 	apt-get install -y --no-install-recommends wget; \
 	rm -rf /var/lib/apt/lists/*; \
 	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
-	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
-	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
+	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch" --no-check-certificate; \
+	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc" --no-check-certificate; \
 	export GNUPGHOME="$(mktemp -d)"; \
 	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
 	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \

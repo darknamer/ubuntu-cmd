@@ -1,0 +1,8 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  ubuntu-cmd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ubuntu-cmd
+    image: unnamed22090/ubuntu-cmd
