@@ -229,25 +229,25 @@ RUN set -ex; \
 	apt-get update; \
 	apt-get install -y \
 		"mariadb-server=$MARIADB_VERSION" \
-# mariadb-backup is installed at the same time so that `mysql-common` is only installed once from just mariadb repos
+		# mariadb-backup is installed at the same time so that `mysql-common` is only installed once from just mariadb repos
 		mariadb-backup \
 		socat \
 	; \
 	rm -rf /var/lib/apt/lists/*; \
-# purge and re-create /var/lib/mysql with appropriate ownership
+	# purge and re-create /var/lib/mysql with appropriate ownership
 	rm -rf /var/lib/mysql; \
 	mkdir -p /var/lib/mysql /var/run/mysqld; \
 	chown -R mysql:mysql /var/lib/mysql /var/run/mysqld; \
-# ensure that /var/run/mysqld (used for socket and lock files) is writable regardless of the UID our mysqld instance ends up having at runtime
+	# ensure that /var/run/mysqld (used for socket and lock files) is writable regardless of the UID our mysqld instance ends up having at runtime
 	chmod 777 /var/run/mysqld; \
-# comment out a few problematic configuration values
+	# comment out a few problematic configuration values
 	find /etc/mysql/ -name '*.cnf' -print0 \
 		| xargs -0 grep -lZE '^(bind-address|log|user\s)' \
 		| xargs -rt -0 sed -Ei 's/^(bind-address|log|user\s)/#&/'; \
-# don't reverse lookup hostnames, they are usually another container
-# Issue #327 Correct order of reading directories /etc/mysql/mariadb.conf.d before /etc/mysql/conf.d (mount-point per documentation)
+	# don't reverse lookup hostnames, they are usually another container
+	# Issue #327 Correct order of reading directories /etc/mysql/mariadb.conf.d before /etc/mysql/conf.d (mount-point per documentation)
 	if [ ! -L /etc/mysql/my.cnf ]; then sed -i -e '/includedir/i[mariadb]\nskip-host-cache\nskip-name-resolve\n' /etc/mysql/my.cnf; \
-# 10.5+
+	# 10.5+
 	else sed -i -e '/includedir/ {N;s/\(.*\)\n\(.*\)/[mariadbd]\nskip-host-cache\nskip-name-resolve\n\n\2\n\1/}' \
                 /etc/mysql/mariadb.cnf; fi
 
@@ -260,5 +260,8 @@ RUN set -ex; \
 
 # EXPOSE 3306
 # CMD ["mariadbd"]
+
+RUN python3 --version
+RUN mysql --version 
 
 CMD ["python3"]
