@@ -261,6 +261,13 @@ RUN set -ex; \
 # EXPOSE 3306
 # CMD ["mariadbd"]
 
+RUN curl https://dl.min.io/client/mc/release/linux-amd64/mc \
+  --create-dirs \
+  -o $HOME/minio-binaries/mc
+RUN chmod +x $HOME/minio-binaries/mc
+RUN export PATH=$PATH:$HOME/minio-binaries/
+RUN mc --help
+
 RUN python3 --version
 RUN mysql --version 
 
