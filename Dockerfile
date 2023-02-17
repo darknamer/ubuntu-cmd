@@ -263,12 +263,11 @@ RUN set -ex; \
 
 RUN curl https://dl.min.io/client/mc/release/linux-amd64/mc \
   --create-dirs \
-  -o $HOME/minio-binaries/mc
-RUN chmod +x $HOME/minio-binaries/mc
-RUN export PATH=$PATH:$HOME/minio-binaries/
-RUN mc --help
+  -o /usr/bin/mc
+RUN chmod +x /usr/bin/mc
 
 RUN python3 --version
 RUN mysql --version 
+RUN mc --help
 
 CMD ["python3"]
